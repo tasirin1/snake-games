@@ -242,7 +242,7 @@
   .badge.show { display: inline-block; }
   .badge.gamepad { color: #88dd99; border-color: rgba(136,221,153,0.2); }
 
-  /* D-pad — disembunyikan saat gamepad aktif */
+  /* D-pad — kontrol sentuh */
   .dpad {
     display: none;
     gap: 4px;
@@ -251,7 +251,6 @@
     max-width: 220px;
   }
   .dpad.active { display: flex; }
-  .dpad.hidden-by-gamepad { display: none !important; }
 
   .dpad-grid {
     display: grid;
@@ -386,9 +385,6 @@
   let gpStartPressed = false;
   let gpSelectPressed = false;
 
-  // Menu focus (untuk navigasi gamepad di overlay)
-  let menuFocusIdx = 0;
-
   highScoreEl.textContent = highScore;
 
   // ===== Resize =====
@@ -503,7 +499,6 @@
     playBtn.textContent = 'Main Lagi';
     settingsBtn.style.display = 'none';
     overlay.classList.add('show');
-    focusMenu();
   }
 
   function startGame() {
@@ -533,7 +528,6 @@
       playBtn.textContent = 'Lanjut';
       settingsBtn.style.display = 'none';
       overlay.classList.add('show');
-      focusMenu();
     } else {
       overlay.classList.remove('show');
       startTickLoop();
@@ -544,42 +538,6 @@
     if (direction.x !== -dx || direction.y !== -dy) {
       nextDirection = { x: dx, y: dy };
     }
-  }
-
-  // ===== Menu focus untuk gamepad =====
-  function getMenuButtons() {
-    const btns = [];
-    if (playBtn.style.display !== 'none') btns.push(playBtn);
-    if (settingsBtn.style.display !== 'none') btns.push(settingsBtn);
-    return btns;
-  }
-
-  function focusMenu() {
-    const btns = getMenuButtons();
-    // Reset semua focus
-    btns.forEach(b => b.classList.remove('focused'));
-    menuFocusIdx = 0;
-    if (btns.length > 0) btns[0].classList.add('focused');
-  }
-
-  function menuNavigate(dx, dy) {
-    const btns = getMenuButtons();
-    if (btns.length === 0) return;
-
-    btns.forEach(b => b.classList.remove('focused'));
-
-    if (dy !== 0) {
-      menuFocusIdx = (menuFocusIdx + dy + btns.length) % btns.length;
-    }
-    // dx = 0, horizontal tidak ada navigasi untuk sekarang
-
-    btns[menuFocusIdx].classList.add('focused');
-  }
-
-  function menuActivate() {
-    const btns = getMenuButtons();
-    if (btns.length === 0) return;
-    btns[menuFocusIdx].click();
   }
 
   // ===== Gamepad =====
@@ -594,8 +552,6 @@
       gamepadConnected = found;
       gamepadIndicator.classList.toggle('connected', found);
       badgeGamepad.classList.toggle('show', found);
-      // Sembunyikan/tampilkan D-pad
-      dpad.classList.toggle('hidden-by-gamepad', found);
       if (found) ensureGamepadPoll();
       if (!found) { /* poll tetap jalan buat deteksi */ }
       updateControlsHint();
@@ -603,7 +559,7 @@
   }
 
   function ensureGamepadPoll() {
-    // Pastikan polling selalu aktif (untuk menu + gameplay)
+    // Pastikan polling selalu aktif untuk gameplay + deteksi koneksi
     if (!gamepadPollId) {
       gamepadPollId = setInterval(pollGamepad, 80);
     }
@@ -647,43 +603,6 @@
       }
     }
     if (!selectDown) gpSelectPressed = false;
-
-    // === Navigasi menu di overlay ===
-    if (!running || paused || gameOver) {
-      // D-pad / stick untuk navigasi menu
-      let dx = 0, dy = 0;
-
-      if (btns[12] && btns[12].pressed) dy = -1;
-      else if (btns[13] && btns[13].pressed) dy = 1;
-      else if (btns[14] && btns[14].pressed) dx = -1;
-      else if (btns[15] && btns[15].pressed) dx = 1;
-      else if (gp.axes) {
-        const threshold = 0.5;
-        if (Math.abs(gp.axes[0]) > threshold || Math.abs(gp.axes[1]) > threshold) {
-          if (Math.abs(gp.axes[0]) > Math.abs(gp.axes[1])) {
-            dx = gp.axes[0] > threshold ? 1 : -1;
-          } else {
-            dy = gp.axes[1] > threshold ? 1 : -1;
-          }
-        }
-      }
-
-      if (dx !== 0 || dy !== 0) {
-        if (dx !== lastGamepadDir.x || dy !== lastGamepadDir.y) {
-          lastGamepadDir = { x: dx, y: dy };
-          menuNavigate(dx, dy);
-        }
-      } else {
-        lastGamepadDir = { x: 0, y: 0 };
-      }
-
-      // Tombol A (button 0) atau B (button 1) untuk aktivasi
-      if ((btns[0] && btns[0].pressed) || (btns[1] && btns[1].pressed)) {
-        menuActivate();
-      }
-
-      return;
-    }
 
     // === Gameplay: kontrol arah ===
     let dx = 0, dy = 0;
@@ -891,6 +810,7 @@
     const parts = ['Geser'];
     if (gamepadConnected) {
       parts.push('🎮 Gamepad');
+      parts.push('⬆⬇⬅➡');
     } else {
       parts.push('⬆⬇⬅➡');
     }
@@ -925,7 +845,7 @@
     updateGamepadStatus();
   });
 
-  // Polling periodik untuk deteksi gamepad (juga untuk gameplay + menu)
+  // Polling periodik untuk deteksi gamepad + gameplay
   setInterval(updateGamepadStatus, 1000);
 
   // ===== Resize =====
@@ -946,9 +866,8 @@
   settingsBtn.style.display = 'none';
   updateControlsHint();
 
-  // Mulai gamepad polling sejak awal agar menu bisa dikontrol
+  // Mulai gamepad polling sejak awal
   ensureGamepadPoll();
-  focusMenu();
 })();
 </script>
 </body>

@@ -5,7 +5,6 @@ snake-android/local.properties
 snake-android/.idea/
 snake-android/*.iml
 snake-android/app/*.iml
-snake-android/gradle/wrapper/gradle-wrapper.jar
 
 # OS
 .DS_Store

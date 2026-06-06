@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🐍 Snake Game</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: #0a0a1a;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    touch-action: none;
+    -webkit-user-select: none; user-select: none;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+  }
+
+  .game-wrapper {
+    width: 100%;
+    max-width: 600px;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 4px 0 4px;
+    color: #ccd;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .score-box {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .score-box span {
+    color: #88dd99;
+  }
+
+  .high-score span {
+    color: #ffcc44;
+  }
+
+  .icon-btn {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #889;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, color 0.2s;
+    touch-action: manipulation;
+  }
+  .icon-btn:active { background: rgba(255,255,255,0.18); color: #ccd; }
+  .icon-btn.active { color: #88dd99; border-color: rgba(136,221,153,0.3); }
+
+  /* Gamepad indicator */
+  .gamepad-indicator {
+    display: none;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: #556;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .gamepad-indicator.connected {
+    display: flex;
+    color: #88dd99;
+    border-color: rgba(136,221,153,0.2);
+  }
+
+  .canvas-wrapper {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    max-width: 600px;
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #111128;
+    box-shadow: 0 0 40px rgba(80, 120, 255, 0.12), inset 0 0 60px rgba(0,0,0,0.4);
+  }
+
+  canvas {
+    display: block;
+    width: 100%; height: 100%;
+    touch-action: none;
+  }
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.65);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+    border-radius: 16px;
+    padding: 24px;
+    text-align: center;
+  }
+  .overlay.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .overlay h2 {
+    font-size: 28px;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+
+  .overlay .sub {
+    color: #889;
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+
+  .overlay .final-score {
+    color: #88dd99;
+    font-size: 42px;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+
+  .overlay .final-label {
+    color: #667;
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .overlay .message {
+    color: #aab;
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
+
+  .play-btn {
+    background: linear-gradient(135deg, #44cc88, #22aa66);
+    border: none;
+    color: #fff;
+    font-size: 17px;
+    font-weight: 700;
+    padding: 14px 44px;
+    border-radius: 14px;
+    cursor: pointer;
+    box-shadow: 0 6px 24px rgba(68, 204, 136, 0.35);
+    transition: transform 0.15s, box-shadow 0.2s;
+    touch-action: manipulation;
+    outline: none;
+  }
+  .play-btn:active { transform: scale(0.94); }
+  .play-btn.focused {
+    box-shadow: 0 0 0 3px rgba(68, 204, 136, 0.5), 0 6px 24px rgba(68, 204, 136, 0.35);
+    transform: scale(1.03);
+  }
+
+  .play-btn.secondary {
+    background: rgba(255,255,255,0.08);
+    box-shadow: none;
+    color: #ccd;
+    margin-top: 8px;
+    font-size: 14px;
+    padding: 10px 28px;
+    display: none;
+  }
+  .play-btn.secondary.focused {
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.14);
+  }
+
+  .controls-hint {
+    color: #445;
+    font-size: 11px;
+    letter-spacing: 0.3px;
+    margin-top: 4px;
+  }
+
+  .badge-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.04);
+    color: #556;
+    border: 1px solid rgba(255,255,255,0.06);
+    display: none;
+  }
+  .badge.show { display: inline-block; }
+  .badge.gamepad { color: #88dd99; border-color: rgba(136,221,153,0.2); }
+
+  /* D-pad — disembunyikan saat gamepad aktif */
+  .dpad {
+    display: none;
+    gap: 4px;
+    margin-top: 4px;
+    width: 100%;
+    max-width: 220px;
+  }
+  .dpad.active { display: flex; }
+  .dpad.hidden-by-gamepad { display: none !important; }
+
+  .dpad-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    gap: 4px;
+    width: 100%;
+    aspect-ratio: 3 / 2;
+  }
+
+  .dpad-btn {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    color: #556;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: background 0.1s, color 0.1s;
+  }
+  .dpad-btn:active { background: rgba(255,255,255,0.15); color: #aab; }
+  .dpad-blank { visibility: hidden; }
+
+  @media (pointer: coarse) {
+    .dpad.active { display: flex; }
+  }
+  @media (max-height: 640px) {
+    .dpad.active { max-width: 150px; }
+    .dpad-grid { aspect-ratio: 3 / 2; }
+    .header { font-size: 12px; }
+    .score-box { font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="game-wrapper">
+  <!-- Header bar -->
+  <div class="header">
+    <div class="header-left">
+      <div class="score-box">🍎 <span id="score">0</span></div>
+      <div class="score-box high-score">🏆 <span id="highScore">0</span></div>
+    </div>
+    <div class="header-right">
+      <div class="gamepad-indicator" id="gamepadIndicator">🎮 <span>Gamepad</span></div>
+      <button class="icon-btn" id="pauseBtn" title="Jeda (P)">⏸</button>
+      <button class="icon-btn" id="restartHeader" title="Mulai ulang">↻</button>
+    </div>
+  </div>
+
+  <!-- Canvas + overlay -->
+  <div class="canvas-wrapper">
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Overlay: dinamis — Start / Pause / Game Over -->
+    <div class="overlay show" id="overlay">
+      <h2 id="overlayTitle">🐍 Snake</h2>
+      <div class="final-score" id="overlayScore"></div>
+      <div class="final-label" id="overlayLabel"></div>
+      <div class="message" id="overlayMessage">Geser layar untuk mulai</div>
+      <button class="play-btn" id="playBtn">Main</button>
+      <button class="play-btn secondary" id="settingsBtn" style="display:none">⚙️</button>
+    </div>
+  </div>
+
+  <!-- D-pad (touch) -->
+  <div class="dpad" id="dpad">
+    <div class="dpad-grid">
+      <div class="dpad-btn dpad-blank"></div>
+      <div class="dpad-btn" data-dir="up">▲</div>
+      <div class="dpad-btn dpad-blank"></div>
+      <div class="dpad-btn" data-dir="left">◀</div>
+      <div class="dpad-btn dpad-blank"></div>
+      <div class="dpad-btn" data-dir="right">▶</div>
+      <div class="dpad-btn dpad-blank"></div>
+      <div class="dpad-btn" data-dir="down">▼</div>
+      <div class="dpad-btn dpad-blank"></div>
+    </div>
+  </div>
+
+  <!-- Badge row -->
+  <div class="badge-row">
+    <span class="badge gamepad" id="badgeGamepad">🎮 Gamepad</span>
+  </div>
+
+  <div class="controls-hint" id="controlsHint">Geser · ⬆⬇⬅➡ · Spasi jeda</div>
+</div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  const scoreEl = document.getElementById('score');
+  const highScoreEl = document.getElementById('highScore');
+  const overlay = document.getElementById('overlay');
+  const overlayTitle = document.getElementById('overlayTitle');
+  const overlayScore = document.getElementById('overlayScore');
+  const overlayLabel = document.getElementById('overlayLabel');
+  const overlayMessage = document.getElementById('overlayMessage');
+  const playBtn = document.getElementById('playBtn');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const restartHeader = document.getElementById('restartHeader');
+  const settingsBtn = document.getElementById('settingsBtn');
+  const gamepadIndicator = document.getElementById('gamepadIndicator');
+  const badgeGamepad = document.getElementById('badgeGamepad');
+  const controlsHint = document.getElementById('controlsHint');
+  const dpad = document.getElementById('dpad');
+
+  // ===== State =====
+  let W, H, gridSize, cellSize;
+  let snake = [];
+  let food = {};
+  let direction = { x: 1, y: 0 };
+  let nextDirection = { x: 1, y: 0 };
+  let score = 0;
+  let highScore = parseInt(localStorage.getItem('snakeHighScore') || '0');
+  let running = false;
+  let paused = false;
+  let gameOver = false;
+  let started = false;
+  let speed = 130;
+  let moveTimer = null;
+
+  // Gamepad
+  let gamepadConnected = false;
+  let lastGamepadDir = { x: 0, y: 0 };
+  let gamepadPollId = null;
+  // Debounce untuk tombol aksi gamepad (start/select)
+  let gpStartPressed = false;
+  let gpSelectPressed = false;
+
+  // Menu focus (untuk navigasi gamepad di overlay)
+  let menuFocusIdx = 0;
+
+  highScoreEl.textContent = highScore;
+
+  // ===== Resize =====
+  function resize() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const size = Math.floor(rect.width);
+    W = H = size;
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    canvas.style.width = size + 'px';
+    canvas.style.height = size + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const cells = Math.max(12, Math.min(20, Math.floor(size / 28)));
+    gridSize = cells;
+    cellSize = size / gridSize;
+
+    if (!running && !gameOver) drawBoard();
+    else draw();
+  }
+
+  // ===== Game Logic =====
+  function initGame() {
+    const cx = Math.floor(gridSize / 2);
+    const cy = Math.floor(gridSize / 2);
+    snake = [
+      { x: cx, y: cy },
+      { x: cx - 1, y: cy },
+      { x: cx - 2, y: cy },
+    ];
+    direction = { x: 1, y: 0 };
+    nextDirection = { x: 1, y: 0 };
+    score = 0;
+    gameOver = false;
+    paused = false;
+    speed = 130;
+    pauseBtn.textContent = '⏸';
+    scoreEl.textContent = '0';
+    spawnFood();
+  }
+
+  function spawnFood() {
+    const occupied = new Set(snake.map(p => `${p.x},${p.y}`));
+    let pos;
+    do {
+      pos = {
+        x: Math.floor(Math.random() * gridSize),
+        y: Math.floor(Math.random() * gridSize),
+      };
+    } while (occupied.has(`${pos.x},${pos.y}`));
+    food = pos;
+  }
+
+  function tick() {
+    if (!running || paused || gameOver) return;
+
+    direction = { ...nextDirection };
+    const head = snake[0];
+    const nx = head.x + direction.x;
+    const ny = head.y + direction.y;
+
+    const wrappedX = (nx + gridSize) % gridSize;
+    const wrappedY = (ny + gridSize) % gridSize;
+
+    if (snake.some(seg => seg.x === wrappedX && seg.y === wrappedY)) {
+      endGame();
+      return;
+    }
+
+    snake.unshift({ x: wrappedX, y: wrappedY });
+
+    if (wrappedX === food.x && wrappedY === food.y) {
+      score++;
+      scoreEl.textContent = score;
+      if (score > highScore) {
+        highScore = score;
+        highScoreEl.textContent = highScore;
+        localStorage.setItem('snakeHighScore', String(highScore));
+      }
+      spawnFood();
+      speed = Math.max(60, 130 - score * 2);
+      clearTickLoop();
+      startTickLoop();
+    } else {
+      snake.pop();
+    }
+
+    draw();
+  }
+
+  function startTickLoop() {
+    moveTimer = setInterval(tick, speed);
+  }
+
+  function clearTickLoop() {
+    if (moveTimer) { clearInterval(moveTimer); moveTimer = null; }
+  }
+
+  function endGame() {
+    gameOver = true;
+    running = false;
+    paused = false;
+    clearTickLoop();
+    draw();
+
+    overlayTitle.textContent = '💀 Game Over';
+    overlayScore.textContent = score;
+    overlayLabel.textContent = 'SKOR';
+    const isNew = score > 0 && score >= highScore;
+    overlayMessage.textContent = isNew ? '🎉 Skor tertinggi baru!' : 'Coba lagi?';
+    playBtn.textContent = 'Main Lagi';
+    settingsBtn.style.display = 'none';
+    overlay.classList.add('show');
+    focusMenu();
+  }
+
+  function startGame() {
+    overlay.classList.remove('show');
+    initGame();
+    running = true;
+    started = true;
+    clearTickLoop();
+    speed = 130;
+    startTickLoop();
+    draw();
+    updateControlsHint();
+    // Gamepad poll tetap jalan (dijalankan terus)
+    ensureGamepadPoll();
+  }
+
+  function pauseGame() {
+    if (!running || gameOver) return;
+    paused = !paused;
+    pauseBtn.textContent = paused ? '▶' : '⏸';
+    if (paused) {
+      clearTickLoop();
+      overlayTitle.textContent = '⏸ Di Jeda';
+      overlayScore.textContent = score;
+      overlayLabel.textContent = '';
+      overlayMessage.textContent = 'Tekan Spasi atau tombol Main untuk lanjut';
+      playBtn.textContent = 'Lanjut';
+      settingsBtn.style.display = 'none';
+      overlay.classList.add('show');
+      focusMenu();
+    } else {
+      overlay.classList.remove('show');
+      startTickLoop();
+    }
+  }
+
+  function setDirection(dx, dy) {
+    if (direction.x !== -dx || direction.y !== -dy) {
+      nextDirection = { x: dx, y: dy };
+    }
+  }
+
+  // ===== Menu focus untuk gamepad =====
+  function getMenuButtons() {
+    const btns = [];
+    if (playBtn.style.display !== 'none') btns.push(playBtn);
+    if (settingsBtn.style.display !== 'none') btns.push(settingsBtn);
+    return btns;
+  }
+
+  function focusMenu() {
+    const btns = getMenuButtons();
+    // Reset semua focus
+    btns.forEach(b => b.classList.remove('focused'));
+    menuFocusIdx = 0;
+    if (btns.length > 0) btns[0].classList.add('focused');
+  }
+
+  function menuNavigate(dx, dy) {
+    const btns = getMenuButtons();
+    if (btns.length === 0) return;
+
+    btns.forEach(b => b.classList.remove('focused'));
+
+    if (dy !== 0) {
+      menuFocusIdx = (menuFocusIdx + dy + btns.length) % btns.length;
+    }
+    // dx = 0, horizontal tidak ada navigasi untuk sekarang
+
+    btns[menuFocusIdx].classList.add('focused');
+  }
+
+  function menuActivate() {
+    const btns = getMenuButtons();
+    if (btns.length === 0) return;
+    btns[menuFocusIdx].click();
+  }
+
+  // ===== Gamepad =====
+  function updateGamepadStatus() {
+    const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+    let found = false;
+    for (const gp of gamepads) {
+      if (gp && gp.connected) { found = true; break; }
+    }
+
+    if (found !== gamepadConnected) {
+      gamepadConnected = found;
+      gamepadIndicator.classList.toggle('connected', found);
+      badgeGamepad.classList.toggle('show', found);
+      // Sembunyikan/tampilkan D-pad
+      dpad.classList.toggle('hidden-by-gamepad', found);
+      if (found) ensureGamepadPoll();
+      if (!found) { /* poll tetap jalan buat deteksi */ }
+      updateControlsHint();
+    }
+  }
+
+  function ensureGamepadPoll() {
+    // Pastikan polling selalu aktif (untuk menu + gameplay)
+    if (!gamepadPollId) {
+      gamepadPollId = setInterval(pollGamepad, 80);
+    }
+  }
+
+  function pollGamepad() {
+    if (!gamepadConnected) return;
+
+    const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+    let gp = null;
+    for (const g of gamepads) {
+      if (g && g.connected) { gp = g; break; }
+    }
+    if (!gp) return;
+
+    const btns = gp.buttons;
+
+    // === Cek tombol Start (button 9) ===
+    const startDown = btns[9] && btns[9].pressed;
+    if (startDown && !gpStartPressed) {
+      gpStartPressed = true;
+      // Menu: jalanin tombol utama / mulai game
+      if (!running || gameOver) {
+        startGame();
+        return;
+      }
+      if (paused) {
+        pauseGame();
+        return;
+      }
+    }
+    if (!startDown) gpStartPressed = false;
+
+    // === Cek tombol Select (button 8) ===
+    const selectDown = btns[8] && btns[8].pressed;
+    if (selectDown && !gpSelectPressed) {
+      gpSelectPressed = true;
+      if (running && !gameOver) {
+        pauseGame();
+        return;
+      }
+    }
+    if (!selectDown) gpSelectPressed = false;
+
+    // === Navigasi menu di overlay ===
+    if (!running || paused || gameOver) {
+      // D-pad / stick untuk navigasi menu
+      let dx = 0, dy = 0;
+
+      if (btns[12] && btns[12].pressed) dy = -1;
+      else if (btns[13] && btns[13].pressed) dy = 1;
+      else if (btns[14] && btns[14].pressed) dx = -1;
+      else if (btns[15] && btns[15].pressed) dx = 1;
+      else if (gp.axes) {
+        const threshold = 0.5;
+        if (Math.abs(gp.axes[0]) > threshold || Math.abs(gp.axes[1]) > threshold) {
+          if (Math.abs(gp.axes[0]) > Math.abs(gp.axes[1])) {
+            dx = gp.axes[0] > threshold ? 1 : -1;
+          } else {
+            dy = gp.axes[1] > threshold ? 1 : -1;
+          }
+        }
+      }
+
+      if (dx !== 0 || dy !== 0) {
+        if (dx !== lastGamepadDir.x || dy !== lastGamepadDir.y) {
+          lastGamepadDir = { x: dx, y: dy };
+          menuNavigate(dx, dy);
+        }
+      } else {
+        lastGamepadDir = { x: 0, y: 0 };
+      }
+
+      // Tombol A (button 0) atau B (button 1) untuk aktivasi
+      if ((btns[0] && btns[0].pressed) || (btns[1] && btns[1].pressed)) {
+        menuActivate();
+      }
+
+      return;
+    }
+
+    // === Gameplay: kontrol arah ===
+    let dx = 0, dy = 0;
+
+    if (btns[12] && btns[12].pressed) dy = -1;
+    else if (btns[13] && btns[13].pressed) dy = 1;
+    else if (btns[14] && btns[14].pressed) dx = -1;
+    else if (btns[15] && btns[15].pressed) dx = 1;
+    else if (gp.axes) {
+      const threshold = 0.5;
+      if (Math.abs(gp.axes[0]) > threshold || Math.abs(gp.axes[1]) > threshold) {
+        if (Math.abs(gp.axes[0]) > Math.abs(gp.axes[1])) {
+          dx = gp.axes[0] > threshold ? 1 : -1;
+        } else {
+          dy = gp.axes[1] > threshold ? 1 : -1;
+        }
+      }
+    }
+
+    if (dx !== 0 || dy !== 0) {
+      if (dx !== lastGamepadDir.x || dy !== lastGamepadDir.y) {
+        lastGamepadDir = { x: dx, y: dy };
+        setDirection(dx, dy);
+      }
+    } else {
+      lastGamepadDir = { x: 0, y: 0 };
+    }
+  }
+
+  // ===== Drawing =====
+  function drawBoard() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= gridSize; i++) {
+      const pos = i * cellSize;
+      ctx.beginPath(); ctx.moveTo(pos, 0); ctx.lineTo(pos, H); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, pos); ctx.lineTo(W, pos); ctx.stroke();
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= gridSize; i++) {
+      const pos = i * cellSize;
+      ctx.beginPath(); ctx.moveTo(pos, 0); ctx.lineTo(pos, H); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, pos); ctx.lineTo(W, pos); ctx.stroke();
+    }
+
+    const fx = food.x * cellSize + cellSize / 2;
+    const fy = food.y * cellSize + cellSize / 2;
+    const grad = ctx.createRadialGradient(fx, fy, 0, fx, fy, cellSize * 0.9);
+    grad.addColorStop(0, 'rgba(255,80,80,0.25)');
+    grad.addColorStop(1, 'rgba(255,80,80,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(food.x * cellSize - cellSize * 0.5, food.y * cellSize - cellSize * 0.5, cellSize * 2, cellSize * 2);
+
+    const pad = cellSize * 0.12;
+    const r = (cellSize - pad * 2) / 2;
+    ctx.beginPath();
+    ctx.arc(fx, fy, r, 0, Math.PI * 2);
+    ctx.fillStyle = '#ff4455';
+    ctx.shadowColor = 'rgba(255,68,85,0.5)';
+    ctx.shadowBlur = 12;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    ctx.beginPath();
+    ctx.arc(fx - r * 0.25, fy - r * 0.25, r * 0.35, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.fill();
+
+    const len = snake.length;
+    for (let i = len - 1; i >= 0; i--) {
+      const seg = snake[i];
+      const sx = seg.x * cellSize;
+      const sy = seg.y * cellSize;
+      const p = cellSize * 0.08;
+      const gap = i === 0 ? 0 : cellSize * 0.04;
+
+      const t = i / Math.max(len - 1, 1);
+      const r2 = Math.round(34 + (1 - t) * 60);
+      const g = Math.round(180 + (1 - t) * 50);
+      const b = Math.round(80 + (1 - t) * 40);
+
+      const cx2 = sx + cellSize / 2;
+      const cy2 = sy + cellSize / 2;
+      const half = cellSize / 2 - p - gap;
+
+      ctx.beginPath();
+      ctx.roundRect(cx2 - half, cy2 - half, half * 2, half * 2, cellSize * 0.22);
+      ctx.fillStyle = `rgb(${r2}, ${g}, ${b})`;
+      ctx.fill();
+
+      if (i === 0) {
+        ctx.beginPath();
+        ctx.arc(cx2 - half * 0.25, cy2 - half * 0.3, half * 0.35, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.fill();
+
+        const eyeR = cellSize * 0.06;
+        const eyeOff = cellSize * 0.18;
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(cx2 + direction.x * eyeOff - direction.y * eyeOff, cy2 + direction.y * eyeOff + direction.x * eyeOff, eyeR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(cx2 + direction.x * eyeOff + direction.y * eyeOff, cy2 + direction.y * eyeOff - direction.x * eyeOff, eyeR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#111';
+        const pupilR = eyeR * 0.5;
+        ctx.beginPath();
+        ctx.arc(cx2 + direction.x * eyeOff - direction.y * eyeOff + direction.x * pupilR * 0.6, cy2 + direction.y * eyeOff + direction.x * eyeOff + direction.y * pupilR * 0.6, pupilR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(cx2 + direction.x * eyeOff + direction.y * eyeOff + direction.x * pupilR * 0.6, cy2 + direction.y * eyeOff - direction.x * eyeOff + direction.y * pupilR * 0.6, pupilR, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  // ===== Touch =====
+  let touchStart = null;
+
+  function handleTouchStart(e) {
+    if (!running && !gameOver) { startGame(); return; }
+    if (paused) { pauseGame(); return; }
+    const t = e.changedTouches[0];
+    touchStart = { x: t.clientX, y: t.clientY };
+  }
+
+  function handleTouchEnd(e) {
+    if (!touchStart || !running || paused || gameOver) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStart.x;
+    const dy = t.clientY - touchStart.y;
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+    const minSwipe = 15;
+
+    if (Math.max(absDx, absDy) < minSwipe) return;
+
+    if (absDx > absDy) {
+      setDirection(dx > 0 ? 1 : -1, 0);
+    } else {
+      setDirection(0, dy > 0 ? 1 : -1);
+    }
+    touchStart = null;
+  }
+
+  function handleTouchMove(e) {
+    e.preventDefault();
+  }
+
+  // ===== Keyboard =====
+  function handleKey(e) {
+    const key = e.key;
+
+    if (key === 'p' || key === 'P') {
+      if (running && !gameOver) { e.preventDefault(); pauseGame(); return; }
+    }
+    if (key === ' ') {
+      e.preventDefault();
+      if (gameOver) { startGame(); return; }
+      if (!running) { startGame(); return; }
+      if (paused) { pauseGame(); return; }
+      return;
+    }
+    if (key === 'Enter') {
+      if (!running || gameOver) { e.preventDefault(); startGame(); return; }
+    }
+
+    if (!running || paused || gameOver) return;
+    switch (key) {
+      case 'ArrowUp': e.preventDefault(); setDirection(0, -1); break;
+      case 'ArrowDown': e.preventDefault(); setDirection(0, 1); break;
+      case 'ArrowLeft': e.preventDefault(); setDirection(-1, 0); break;
+      case 'ArrowRight': e.preventDefault(); setDirection(1, 0); break;
+    }
+  }
+
+  // ===== D-pad touch =====
+  document.querySelectorAll('[data-dir]').forEach(btn => {
+    const handler = (e) => {
+      e.preventDefault();
+      if (!running && !gameOver) { startGame(); return; }
+      if (!running || gameOver) return;
+      if (paused) return;
+      const dir = btn.dataset.dir;
+      switch (dir) {
+        case 'up': setDirection(0, -1); break;
+        case 'down': setDirection(0, 1); break;
+        case 'left': setDirection(-1, 0); break;
+        case 'right': setDirection(1, 0); break;
+      }
+    };
+    btn.addEventListener('pointerdown', handler);
+  });
+
+  // ===== UI Helpers =====
+  function updateControlsHint() {
+    const parts = ['Geser'];
+    if (gamepadConnected) {
+      parts.push('🎮 Gamepad');
+    } else {
+      parts.push('⬆⬇⬅➡');
+    }
+    controlsHint.textContent = parts.join(' · ') + ' · Spasi jeda';
+  }
+
+  // ===== Events =====
+  canvas.addEventListener('touchstart', handleTouchStart, { passive: true });
+  canvas.addEventListener('touchend', handleTouchEnd, { passive: true });
+  canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+  window.addEventListener('keydown', handleKey);
+
+  playBtn.addEventListener('click', () => {
+    if (paused) { pauseGame(); return; }
+    startGame();
+  });
+
+  pauseBtn.addEventListener('click', pauseGame);
+
+  restartHeader.addEventListener('click', () => {
+    if (running || gameOver) {
+      clearTickLoop();
+      startGame();
+    }
+  });
+
+  // ===== Gamepad events =====
+  window.addEventListener('gamepadconnected', (e) => {
+    updateGamepadStatus();
+  });
+  window.addEventListener('gamepaddisconnected', (e) => {
+    updateGamepadStatus();
+  });
+
+  // Polling periodik untuk deteksi gamepad (juga untuk gameplay + menu)
+  setInterval(updateGamepadStatus, 1000);
+
+  // ===== Resize =====
+  const ro = new ResizeObserver(() => resize());
+  ro.observe(canvas.parentElement);
+
+  // ===== Init =====
+  resize();
+  initGame();
+  draw();
+
+  overlay.classList.add('show');
+  overlayTitle.textContent = '🐍 Snake';
+  overlayScore.textContent = '';
+  overlayLabel.textContent = '';
+  overlayMessage.innerHTML = 'Geser layar untuk mulai<br>atau tekan Spasi / Enter';
+  playBtn.textContent = 'Main';
+  settingsBtn.style.display = 'none';
+  updateControlsHint();
+
+  // Mulai gamepad polling sejak awal agar menu bisa dikontrol
+  ensureGamepadPoll();
+  focusMenu();
+})();
+</script>
+</body>
+</html>

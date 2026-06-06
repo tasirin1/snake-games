@@ -8,8 +8,6 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
-import androidx.webkit.WebViewCompat
-import androidx.webkit.WebViewFeature
 
 @SuppressLint("SetJavaScriptEnabled")
 class MainActivity : ComponentActivity() {
@@ -45,12 +43,6 @@ class MainActivity : ComponentActivity() {
             settings.displayZoomControls = false
             settings.mediaPlaybackRequiresUserGesture = false
             settings.cacheMode = android.webkit.WebSettings.LOAD_NO_CACHE
-
-            // Enable modern WebView features
-            if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
-                WebViewCompat.setForceDark(this, WebViewCompat.FORCE_DARK_OFF)
-            }
-
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(
                     view: WebView?,
